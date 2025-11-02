@@ -18,14 +18,13 @@ import {
   TrendingUp,
   Lightbulb,
   CalendarIcon,
-  Camera,
   Upload,
   FileText,
   Landmark,
   ShoppingCart,
   Tag,
 } from "lucide-react";
-import { getAdviceForMood, getExpenseAdvice, getMoodFromImageInput, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
+import { getAdviceForMood, getExpenseAdvice, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -73,7 +72,6 @@ import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const moods = [
   { name: "Happy", icon: <Smile className="h-8 w-8" />, value: "happy" },
@@ -122,9 +120,6 @@ export default function Home() {
   
   const [textInput, setTextInput] = useState('');
   const [isTextMoodLoading, setIsTextMoodLoading] = useState(false);
-  const [isCameraMoodLoading, setIsCameraMoodLoading] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
-  const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -186,68 +181,6 @@ export default function Home() {
     getExpenseSummary();
   }, [transactions]);
 
-
-  const handleGetCameraPermission = async () => {
-    if (hasCameraPermission) {
-      processImageFromCamera();
-      return;
-    }
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      setHasCameraPermission(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    } catch (error) {
-      console.error("Error accessing camera:", error);
-      setHasCameraPermission(false);
-      toast({
-        variant: "destructive",
-        title: "Camera Access Denied",
-        description: "Please enable camera permissions in your browser settings.",
-      });
-    }
-  };
-
-  const processImageFromCamera = () => {
-    if (videoRef.current) {
-      setIsCameraMoodLoading(true);
-      const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
-      const context = canvas.getContext("2d");
-      if (context) {
-        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUri = canvas.toDataURL("image/jpeg");
-        handleMoodFromImage(dataUri);
-      } else {
-        setIsCameraMoodLoading(false);
-      }
-    }
-  };
-
-  const handleMoodFromImage = async (photoDataUri: string) => {
-    try {
-      const result = await getMoodFromImageInput(photoDataUri);
-      handleMoodClick(result.mood as Mood, true);
-    } catch (error) {
-      console.error(error);
-      toast({
-        variant: "destructive",
-        title: "Mood Detection Failed",
-        description: "Could not detect mood from the image.",
-      });
-    } finally {
-      setIsCameraMoodLoading(false);
-      // Turn off the camera
-      if (videoRef.current && videoRef.current.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream;
-        stream.getTracks().forEach(track => track.stop());
-        videoRef.current.srcObject = null;
-        setHasCameraPermission(undefined);
-      }
-    }
-  };
 
   const handleTextMoodSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -441,7 +374,7 @@ export default function Home() {
               ))}
             </div>
             
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-6 grid grid-cols-1 gap-4">
               <form onSubmit={handleTextMoodSubmit} className="space-y-2">
                 <Textarea 
                   value={textInput}
@@ -454,34 +387,6 @@ export default function Home() {
                   Get Mood From Text
                 </Button>
               </form>
-
-              <div className="space-y-2">
-                {hasCameraPermission === undefined && (
-                  <Button onClick={handleGetCameraPermission} disabled={isCameraMoodLoading} className="w-full">
-                    {isCameraMoodLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                    Enable Camera to Detect Mood
-                  </Button>
-                )}
-
-                {hasCameraPermission === true && (
-                  <>
-                    <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
-                    <Button onClick={processImageFromCamera} disabled={isCameraMoodLoading} className="w-full">
-                        {isCameraMoodLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Detect Mood From Camera
-                    </Button>
-                  </>
-                )}
-
-                {hasCameraPermission === false && (
-                    <Alert variant="destructive">
-                        <AlertTitle>Camera Access Required</AlertTitle>
-                        <AlertDescription>
-                          Please allow camera access to use this feature. You may need to reset permissions in your browser settings.
-                        </AlertDescription>
-                    </Alert>
-                )}
-              </div>
             </div>
 
              {selectedMood && (
