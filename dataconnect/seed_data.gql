@@ -1,0 +1,50 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public.") {
+  mood_insertMany(data: [
+    {
+      id: "a1a1a1a1-b2b2-c3c3-d4d4-e5e5e5e5e5e5",
+      colorCode: "#FF0000",
+      createdAt: "2024-04-29T12:00:00Z",
+      description: "Feeling happy",
+      iconUrl: "https://example.com/happy.png",
+      name: "Happy"
+    },
+    {
+      id: "f6f6f6f6-g7g7-h8h8-i9i9-j0j0j0j0j0j0",
+      colorCode: "#00FF00",
+      createdAt: "2024-04-29T12:00:00Z",
+      description: "Feeling sad",
+      iconUrl: "https://example.com/sad.png",
+      name: "Sad"
+    }
+  ])
+  advice_insertMany(data: [
+    {
+      id: "k1k1k1k1-l2l2-m3m3-n4n4-o5o5o5o5o5o5",
+      author: "Some Author",
+      category: "General",
+      content: "Take a deep breath.",
+      createdAt: "2024-04-29T12:00:00Z",
+      source: "Some Source"
+    },
+    {
+      id: "p6p6p6p6-q7q7-r8r8-s9s9-t0t0t0t0t0t0",
+      author: "Another Author",
+      category: "Work",
+      content: "Focus on one task at a time.",
+      createdAt: "2024-04-29T12:00:00Z",
+      source: "Another Source"
+    }
+  ])
+  moodAdvice_insertMany(data: [
+    {
+      moodId: "a1a1a1a1-b2b2-c3c3-d4d4-e5e5e5e5e5e5",
+      adviceId: "k1k1k1k1-l2l2-m3m3-n4n4-o5o5o5o5o5o5",
+      order: 1
+    },
+    {
+      moodId: "f6f6f6f6-g7g7-h8h8-i9i9-j0j0j0j0j0j0",
+      adviceId: "p6p6p6p6-q7q7-r8r8-s9s9-t0t0t0t0t0t0",
+      order: 2
+    }
+  ])
+}

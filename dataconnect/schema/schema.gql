@@ -1,0 +1,51 @@
+type User @table {
+  displayName: String!
+  createdAt: Timestamp!
+  email: String
+  photoUrl: String
+  preferredAdviceTypes: [String]
+}
+
+type Mood @table {
+  name: String!
+  description: String!
+  createdAt: Timestamp!
+  colorCode: String
+  iconUrl: String
+}
+
+type Advice @table {
+  content: String!
+  createdAt: Timestamp!
+  source: String
+  author: String
+  category: String
+}
+
+type MoodAdvice @table(key: ["mood", "advice"]) {
+  mood: Mood!
+  advice: Advice!
+  order: Int
+}
+
+type UserMoodLog @table {
+  user: User!
+  mood: Mood!
+  loggedAt: Timestamp!
+  userNotes: String
+}
+
+type SavedAdvice @table(key: ["user", "advice"]) {
+  user: User!
+  advice: Advice!
+  savedAt: Timestamp!
+  userNotes: String
+}
+
+type AdviceFeedback @table(key: ["user", "advice"]) {
+  user: User!
+  advice: Advice!
+  feedbackRating: Int!
+  feedbackAt: Timestamp!
+  feedbackComment: String
+}

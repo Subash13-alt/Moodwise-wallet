@@ -1,0 +1,39 @@
+mutation CreateUser @auth(level: USER, insecureReason: "This mutation is safe to expose to all logged in users.") {
+  user_insert(data: {
+    id_expr: "uuidV4()",
+    createdAt_expr: "request.time",
+    displayName: "New User",
+    email: "newuser@example.com"
+  })
+}
+
+query ListAdvice @auth(level: PUBLIC, insecureReason: "This query is safe to expose to the public") {
+  advices {
+    id
+    author
+    category
+    content
+  }
+}
+
+mutation SaveAdvice($adviceId: UUID!) @auth(level: USER, insecureReason: "This mutation is safe to expose to all logged in users.") {
+  savedAdvice_insert(data: {
+    userId_expr: "auth.uid",
+    adviceId: $adviceId,
+    savedAt_expr: "request.time"
+  })
+}
+
+query ListMyMoodLogs @auth(level: USER) {
+  userMoodLogs(where: {userId: {eq_expr: "auth.uid"}}) {
+    id
+    mood {
+      name
+      description
+      iconUrl
+      colorCode
+    }
+    loggedAt
+    userNotes
+  }
+}
