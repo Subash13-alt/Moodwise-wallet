@@ -1,6 +1,7 @@
 "use server";
 
 import { detectMoodFromText } from "@/ai/flows/detect-mood-from-text";
+import { detectMoodFromImage } from "@/ai/flows/detect-mood-from-image";
 import { getPersonalizedFinancialAdvice } from "@/ai/flows/personalized-financial-advice";
 import { getPersonalizedExpenseAdvice } from "@/ai/flows/expense-advisor";
 import { getExpenseSummary } from "@/ai/flows/expense-summary";
@@ -24,6 +25,17 @@ export async function getMoodFromTextInput(text: string) {
   const result = await detectMoodFromText({ text });
   if (!MoodEnum.safeParse(result.mood).success) {
     throw new Error("Invalid mood detected.");
+  }
+  return result;
+}
+
+export async function getMoodFromImage(photoDataUri: string) {
+  if (!photoDataUri) {
+    throw new Error("Image data cannot be empty.");
+  }
+  const result = await detectMoodFromImage({ photoDataUri });
+  if (!MoodEnum.safeParse(result.mood).success) {
+    throw new Error("Invalid mood detected from image.");
   }
   return result;
 }
