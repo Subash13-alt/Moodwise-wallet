@@ -19,8 +19,10 @@ import {
   Lightbulb,
   CalendarIcon,
   Camera,
+  Upload,
+  FileText,
 } from "lucide-react";
-import { getAdviceForMood, getExpenseAdvice, getMoodFromImageInput, getMoodFromTextInput } from "./actions";
+import { getAdviceForMood, getExpenseAdvice, getMoodFromImageInput, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -113,7 +115,12 @@ export default function Home() {
   const [isCameraMoodLoading, setIsCameraMoodLoading] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const [expenseSummary, setExpenseSummary] = useState<string | null>(null);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
+
 
   const {
     control,
@@ -146,6 +153,28 @@ export default function Home() {
     };
     fetchDailyAdvice();
   }, []);
+
+  const getExpenseSummary = async () => {
+    if (transactions.length === 0) {
+      setExpenseSummary("No transactions available to analyze.");
+      return;
+    }
+    setIsSummaryLoading(true);
+    try {
+      const result = await getExpenseSummaryAction({ transactions });
+      setExpenseSummary(result.summary);
+    } catch (error) {
+      setExpenseSummary("Could not generate summary. Please try again later.");
+      console.error(error);
+    } finally {
+      setIsSummaryLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getExpenseSummary();
+  }, [transactions]);
+
 
   const handleGetCameraPermission = async () => {
     if (hasCameraPermission) {
@@ -300,6 +329,65 @@ export default function Home() {
     setAddTransactionOpen(false);
   };
   
+    const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      try {
+        const lines = text.split('\n').filter(line => line.trim() !== '');
+        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const requiredHeaders = ['date', 'category', 'amount', 'mood'];
+        if (!requiredHeaders.every(h => headers.includes(h))) {
+          throw new Error('CSV must include date, category, amount, and mood headers.');
+        }
+
+        const newTransactions: Transaction[] = lines.slice(1).map((line, index) => {
+          const values = line.split(',');
+          const transactionData: any = {};
+          headers.forEach((header, i) => {
+            transactionData[header] = values[i].trim();
+          });
+          
+          const moodValue = transactionData.mood.toLowerCase();
+          if (!moods.some(m => m.value === moodValue)) {
+            throw new Error(`Invalid mood "${transactionData.mood}" on row ${index + 2}.`);
+          }
+
+          return {
+            id: `csv-${Date.now()}-${index}`,
+            date: format(new Date(transactionData.date), "MM/dd/yyyy"),
+            category: transactionData.category,
+            amount: parseFloat(transactionData.amount),
+            mood: moodValue,
+            timeOfDay: new Date(transactionData.date).getHours() < 12 ? "Morning" : "Afternoon",
+            recommendation: "Imported from CSV.",
+          };
+        });
+
+        setTransactions(prev => [...newTransactions, ...prev]);
+        toast({
+          title: "Import Successful",
+          description: `${newTransactions.length} transactions have been imported.`,
+        });
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "CSV Import Failed",
+          description: error.message || "Please check the file format and try again.",
+        });
+      }
+    };
+    reader.readAsText(file);
+    // Reset file input
+    if(fileInputRef.current) {
+        fileInputRef.current.value = "";
+    }
+  };
+
+
   const moodSpendingData = moods.map(mood => {
     const totalSpending = transactions
       .filter(t => (t.mood.toLowerCase() as Mood) === mood.value)
@@ -412,94 +500,106 @@ export default function Home() {
                                 Your recent spending activity.
                             </CardDescription>
                         </div>
-                        <Dialog open={isAddTransactionOpen} onOpenChange={setAddTransactionOpen}>
-                            <DialogTrigger asChild>
-                                <Button size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
-                            </DialogTrigger>
-                            <DialogContent>
-                                <DialogHeader>
-                                    <DialogTitle>Add New Transaction</DialogTitle>
-                                </DialogHeader>
-                                <form onSubmit={handleSubmit(handleAddTransaction)} className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="category">Category</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleFileUpload}
+                                accept=".csv"
+                                className="hidden"
+                            />
+                            <Button size="sm" variant="outline" onClick={() => fileInputRef.current?.click()}>
+                                <Upload className="mr-2 h-4 w-4" /> Import CSV
+                            </Button>
+                            <Dialog open={isAddTransactionOpen} onOpenChange={setAddTransactionOpen}>
+                                <DialogTrigger asChild>
+                                    <Button size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Add New Transaction</DialogTitle>
+                                    </DialogHeader>
+                                    <form onSubmit={handleSubmit(handleAddTransaction)} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="category">Category</Label>
+                                            <Controller
+                                                name="category"
+                                                control={control}
+                                                render={({ field }) => <Input id="category" {...field} />}
+                                            />
+                                            {errors.category && <p className="text-destructive text-sm">{errors.category.message}</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="amount">Amount (₹)</Label>
+                                            <Controller
+                                                name="amount"
+                                                control={control}
+                                                render={({ field }) => <Input id="amount" type="number" {...field} />}
+                                            />
+                                            {errors.amount && <p className="text-destructive text-sm">{errors.amount.message}</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                        <Label htmlFor="date">Date</Label>
                                         <Controller
-                                            name="category"
-                                            control={control}
-                                            render={({ field }) => <Input id="category" {...field} />}
-                                        />
-                                        {errors.category && <p className="text-destructive text-sm">{errors.category.message}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="amount">Amount (INR)</Label>
-                                        <Controller
-                                            name="amount"
-                                            control={control}
-                                            render={({ field }) => <Input id="amount" type="number" {...field} />}
-                                        />
-                                        {errors.amount && <p className="text-destructive text-sm">{errors.amount.message}</p>}
-                                    </div>
-                                     <div className="space-y-2">
-                                      <Label htmlFor="date">Date</Label>
-                                      <Controller
-                                        name="date"
-                                        control={control}
-                                        render={({ field }) => (
-                                          <Popover>
-                                            <PopoverTrigger asChild>
-                                              <Button
-                                                variant={"outline"}
-                                                className={cn(
-                                                  "w-full justify-start text-left font-normal",
-                                                  !field.value && "text-muted-foreground"
-                                                )}
-                                              >
-                                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                              </Button>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0">
-                                              <Calendar
-                                                mode="single"
-                                                selected={field.value}
-                                                onSelect={field.onChange}
-                                                initialFocus
-                                              />
-                                            </PopoverContent>
-                                          </Popover>
-                                        )}
-                                      />
-                                      {errors.date && <p className="text-destructive text-sm">{errors.date.message}</p>}
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="mood">Mood</Label>
-                                        <Controller
-                                            name="mood"
+                                            name="date"
                                             control={control}
                                             render={({ field }) => (
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <SelectTrigger id="mood">
-                                                        <SelectValue placeholder="Select mood" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {moods.map(mood => (
-                                                            <SelectItem key={mood.value} value={mood.value}>{mood.name}</SelectItem>
-                                                        ))}
-                                                    </SelectContent>
-                                                </Select>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                <Button
+                                                    variant={"outline"}
+                                                    className={cn(
+                                                    "w-full justify-start text-left font-normal",
+                                                    !field.value && "text-muted-foreground"
+                                                    )}
+                                                >
+                                                    <CalendarIcon className="mr-2 h-4 w-4" />
+                                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                                </Button>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value}
+                                                    onSelect={field.onChange}
+                                                    initialFocus
+                                                />
+                                                </PopoverContent>
+                                            </Popover>
                                             )}
                                         />
-                                        {errors.mood && <p className="text-destructive text-sm">{errors.mood.message}</p>}
-                                    </div>
-                                    <DialogFooter>
-                                        <DialogClose asChild>
-                                            <Button type="button" variant="outline">Cancel</Button>
-                                        </DialogClose>
-                                        <Button type="submit">Add Transaction</Button>
-                                    </DialogFooter>
-                                </form>
-                            </DialogContent>
-                        </Dialog>
+                                        {errors.date && <p className="text-destructive text-sm">{errors.date.message}</p>}
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="mood">Mood</Label>
+                                            <Controller
+                                                name="mood"
+                                                control={control}
+                                                render={({ field }) => (
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <SelectTrigger id="mood">
+                                                            <SelectValue placeholder="Select mood" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {moods.map(mood => (
+                                                                <SelectItem key={mood.value} value={mood.value}>{mood.name}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                )}
+                                            />
+                                            {errors.mood && <p className="text-destructive text-sm">{errors.mood.message}</p>}
+                                        </div>
+                                        <DialogFooter>
+                                            <DialogClose asChild>
+                                                <Button type="button" variant="outline">Cancel</Button>
+                                            </DialogClose>
+                                            <Button type="submit">Add Transaction</Button>
+                                        </DialogFooter>
+                                    </form>
+                                </DialogContent>
+                            </Dialog>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <ScrollArea className="h-96">
@@ -552,6 +652,23 @@ export default function Home() {
                     </CardContent>
                 </Card>
                 <Card className="bg-card/50 border-primary/20">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2 text-2xl font-bold">
+                        <FileText className="text-primary" />
+                        Expense Summary
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        {isSummaryLoading ? (
+                        <div className="flex items-center justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                        ) : (
+                        <p className="text-sm">{expenseSummary}</p>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card className="bg-card/50 border-primary/20">
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold">Mood Spending</CardTitle>
                     <CardDescription>Spending breakdown by mood.</CardDescription>
@@ -580,7 +697,7 @@ export default function Home() {
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                     <Bot className="h-12 w-12 mb-4" />
                     <p className="text-center">Ask me anything about your expenses!</p>
-                    <p className="text-center text-sm">e.g., "I spent $50 on coffee this week, is that too much?"</p>
+                    <p className="text-center text-sm">e.g., "I spent ₹4000 on coffee this week, is that too much?"</p>
                   </div>
                 ) : (
                   chatHistory.map((chat, index) => (

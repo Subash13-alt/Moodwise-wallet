@@ -4,6 +4,8 @@ import { detectMoodFromText } from "@/ai/flows/detect-mood-from-text";
 import { detectMoodFromImage } from "@/ai/flows/detect-mood-from-image";
 import { getPersonalizedFinancialAdvice } from "@/ai/flows/personalized-financial-advice";
 import { getPersonalizedExpenseAdvice } from "@/ai/flows/expense-advisor";
+import { getExpenseSummary } from "@/ai/flows/expense-summary";
+import { Transaction } from "@/lib/transactions";
 import { z } from "zod";
 
 const MoodEnum = z.enum([
@@ -54,4 +56,12 @@ export async function getExpenseAdvice(
     throw new Error("Failed to generate advice.");
   }
   return result;
+}
+
+export async function getExpenseSummaryAction(input: { transactions: Transaction[]}) {
+    const result = await getExpenseSummary(input);
+    if (!result.summary) {
+        throw new Error("Failed to generate summary.");
+    }
+    return result;
 }
