@@ -18,7 +18,6 @@ import {
   TrendingUp,
   Lightbulb,
   CalendarIcon,
-  Upload,
   FileText,
   Landmark,
   ShoppingCart,
@@ -451,7 +450,7 @@ export default function Home() {
                                 className="hidden"
                             />
                             <Button size="sm" variant="outline" onClick={() => csvFileInputRef.current?.click()}>
-                                <Upload className="mr-2 h-4 w-4" /> Import CSV
+                                 Import CSV
                             </Button>
                             <Dialog open={isAddTransactionOpen} onOpenChange={setAddTransactionOpen}>
                                 <DialogTrigger asChild>
@@ -744,5 +743,3 @@ export default function Home() {
     </main>
   );
 }
-
-    
