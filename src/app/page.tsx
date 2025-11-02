@@ -23,9 +23,8 @@ import {
   Landmark,
   ShoppingCart,
   Tag,
-  Camera,
 } from "lucide-react";
-import { getAdviceForMood, getExpenseAdvice, getMoodFromTextInput, getExpenseSummaryAction, getMoodFromImage } from "./actions";
+import { getAdviceForMood, getExpenseAdvice, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -122,9 +121,7 @@ export default function Home() {
   const [textInput, setTextInput] = useState('');
   const [isTextMoodLoading, setIsTextMoodLoading] = useState(false);
   const csvFileInputRef = useRef<HTMLInputElement>(null);
-  const imageFileInputRef = useRef<HTMLInputElement>(null);
-  const [isImageMoodLoading, setIsImageMoodLoading] = useState(false);
-
+  
   const { toast } = useToast();
 
   const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
@@ -230,45 +227,6 @@ export default function Home() {
     }
   };
   
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast({
-        variant: "destructive",
-        title: "Invalid File Type",
-        description: "Please upload an image file.",
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const photoDataUri = e.target?.result as string;
-      setIsImageMoodLoading(true);
-      try {
-        const result = await getMoodFromImage(photoDataUri);
-        handleMoodClick(result.mood as Mood, true);
-      } catch (error) {
-        console.error(error);
-        toast({
-          variant: "destructive",
-          title: "Image Analysis Failed",
-          description: "Could not detect mood from the image.",
-        });
-      } finally {
-        setIsImageMoodLoading(false);
-      }
-    };
-    reader.readAsDataURL(file);
-
-    if (imageFileInputRef.current) {
-      imageFileInputRef.current.value = "";
-    }
-  };
-
-
   const handleMoodClick = async (mood: Mood, force = false) => {
     if (selectedMood === mood && !force) {
       setSelectedMood(null);
@@ -442,7 +400,7 @@ export default function Home() {
               ))}
             </div>
             
-            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="mt-6">
               <form onSubmit={handleTextMoodSubmit} className="space-y-2">
                 <Textarea 
                   value={textInput}
@@ -455,19 +413,6 @@ export default function Home() {
                   Get Mood From Text
                 </Button>
               </form>
-               <div className="space-y-2">
-                 <Input
-                    type="file"
-                    ref={imageFileInputRef}
-                    onChange={handleImageUpload}
-                    accept="image/*"
-                    className="hidden"
-                  />
-                  <Button onClick={() => imageFileInputRef.current?.click()} disabled={isImageMoodLoading} className="w-full h-full">
-                    {isImageMoodLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
-                    Get Mood From Photo
-                  </Button>
-              </div>
             </div>
 
              {selectedMood && (
@@ -708,7 +653,7 @@ export default function Home() {
                         )}
                     </CardContent>
                 </Card>
-                <Card className="bg-card/ ৫০ border-primary/20">
+                <Card className="bg-card/50 border-primary/20">
                   <CardHeader>
                     <CardTitle className="text-2xl font-bold">Mood Spending</CardTitle>
                     <CardDescription>Spending breakdown by mood.</CardDescription>
