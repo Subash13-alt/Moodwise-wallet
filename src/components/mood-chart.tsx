@@ -1,24 +1,19 @@
 "use client";
 
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis, Cell } from "recharts";
 
 import {
   ChartConfig,
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-  ChartLegend,
-  ChartLegendContent,
 } from "@/components/ui/chart";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-
-type Mood = "happy" | "sad" | "neutral";
 
 type MoodChartProps = {
   data: {
-    date: string;
+    mood: string;
     spending: number;
-    mood: Mood;
+    fill: string;
   }[];
 };
 
@@ -26,70 +21,38 @@ const chartConfig = {
   spending: {
     label: "Spending",
   },
-  happy: {
-    label: "Happy",
-    color: "hsl(var(--chart-2))",
-  },
-  sad: {
-    label: "Sad",
-    color: "hsl(var(--chart-1))",
-  },
-  neutral: {
-    label: "Neutral",
-    color: "hsl(var(--muted-foreground))",
-  },
+  happy: { label: "Happy", color: "hsl(var(--chart-2))" },
+  sad: { label: "Sad", color: "hsl(var(--chart-1))" },
+  neutral: { label: "Neutral", color: "hsl(var(--muted-foreground))" },
+  stressed: { label: "Stressed", color: "hsl(var(--chart-4))" },
+  anxious: { label: "Anxious", color: "hsl(var(--chart-5))" },
+  tired: { label: "Tired", color: "hsl(var(--chart-3))" },
 } satisfies ChartConfig;
 
 export function MoodChart({ data }: MoodChartProps) {
   return (
     <ChartContainer config={chartConfig} className="min-h-[200px] w-full">
-      <BarChart
-        accessibilityLayer
-        data={data}
-        margin={{
-          top: 20,
-          right: 20,
-          bottom: 20,
-          left: 20,
-        }}
-      >
+      <BarChart accessibilityLayer data={data}>
         <CartesianGrid vertical={false} />
         <XAxis
-          dataKey="date"
+          dataKey="mood"
           tickLine={false}
           tickMargin={10}
           axisLine={false}
-          tickFormatter={(value) => value.slice(0, 3)}
         />
         <YAxis
           tickLine={false}
           axisLine={false}
           tickMargin={10}
-          tickFormatter={(value) => `$${value}`}
+          tickFormatter={(value) => `₹${value}`}
         />
         <ChartTooltip
           cursor={false}
           content={<ChartTooltipContent indicator="dot" />}
         />
-        <ChartLegend content={<ChartLegendContent />} />
-        <Bar
-          dataKey="spending"
-          radius={4}
-          // @ts-ignore
-          fill="var(--color)"
-        >
+        <Bar dataKey="spending" radius={4}>
           {data.map((entry) => (
-            <div
-              key={entry.date}
-              // @ts-ignore
-              fill={
-                entry.mood === "happy"
-                  ? "var(--color-happy)"
-                  : entry.mood === "sad"
-                  ? "var(--color-sad)"
-                  : "var(--color-neutral)"
-              }
-            />
+            <Cell key={`cell-${entry.mood}`} fill={entry.fill} />
           ))}
         </Bar>
       </BarChart>

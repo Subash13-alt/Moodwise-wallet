@@ -62,11 +62,17 @@ body {
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
-    --chart-1: 231 48% 60%;
-    --chart-2: 122 39% 55%;
-    --chart-3: 25 84% 60%;
-    --chart-4: 0 74% 66%;
-    --chart-5: 280 87% 67%;
+    --chart-1: 231 48% 60%; /* sad */
+    --chart-2: 122 39% 55%; /* happy */
+    --chart-3: 25 84% 60%; /* tired */
+    --chart-4: 0 74% 66%; /* stressed */
+    --chart-5: 280 87% 67%; /* anxious */
+    --color-happy: hsl(var(--chart-2));
+    --color-sad: hsl(var(--chart-1));
+    --color-neutral: hsl(var(--muted-foreground));
+    --color-stressed: hsl(var(--chart-4));
+    --color-anxious: hsl(var(--chart-5));
+    --color-tired: hsl(var(--chart-3));
     --sidebar-background: 230 15% 12%;
     --sidebar-foreground: 231 10% 85%;
     --sidebar-primary: 231 48% 60%;
