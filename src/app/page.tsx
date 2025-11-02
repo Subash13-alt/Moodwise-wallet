@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Frown,
   Loader2,
@@ -17,8 +17,10 @@ import {
   PlusCircle,
   TrendingUp,
   Lightbulb,
+  CalendarIcon,
+  Camera,
 } from "lucide-react";
-import { getAdviceForMood, getExpenseAdvice } from "./actions";
+import { getAdviceForMood, getExpenseAdvice, getMoodFromImageInput, getMoodFromTextInput } from "./actions";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -60,6 +62,13 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { Calendar } from "@/components/ui/calendar";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 const moods = [
   { name: "Happy", icon: <Smile className="h-8 w-8" />, value: "happy" },
@@ -76,6 +85,7 @@ const transactionSchema = z.object({
   category: z.string().min(1, "Category is required"),
   amount: z.coerce.number().min(1, "Amount must be greater than 0"),
   mood: z.enum(["happy", "sad", "neutral", "stressed", "anxious", "tired"]),
+  date: z.date({ required_error: "Date is required." }),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -97,6 +107,13 @@ export default function Home() {
 
   const [dailyAdvice, setDailyAdvice] = useState<string | null>(null);
   const [isDailyAdviceLoading, setIsDailyAdviceLoading] = useState(false);
+  
+  const [textInput, setTextInput] = useState('');
+  const [isTextMoodLoading, setIsTextMoodLoading] = useState(false);
+  const [isCameraMoodLoading, setIsCameraMoodLoading] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | undefined>(undefined);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const { toast } = useToast();
 
   const {
     control,
@@ -109,6 +126,7 @@ export default function Home() {
       category: "",
       amount: 0,
       mood: "neutral",
+      date: new Date(),
     },
   });
 
@@ -129,8 +147,89 @@ export default function Home() {
     fetchDailyAdvice();
   }, []);
 
-  const handleMoodClick = async (mood: Mood) => {
-    if (selectedMood === mood) {
+  const handleGetCameraPermission = async () => {
+    if (hasCameraPermission) {
+      processImageFromCamera();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      setHasCameraPermission(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error("Error accessing camera:", error);
+      setHasCameraPermission(false);
+      toast({
+        variant: "destructive",
+        title: "Camera Access Denied",
+        description: "Please enable camera permissions in your browser settings.",
+      });
+    }
+  };
+
+  const processImageFromCamera = () => {
+    if (videoRef.current) {
+      setIsCameraMoodLoading(true);
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const context = canvas.getContext("2d");
+      if (context) {
+        context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUri = canvas.toDataURL("image/jpeg");
+        handleMoodFromImage(dataUri);
+      } else {
+        setIsCameraMoodLoading(false);
+      }
+    }
+  };
+
+  const handleMoodFromImage = async (photoDataUri: string) => {
+    try {
+      const result = await getMoodFromImageInput(photoDataUri);
+      handleMoodClick(result.mood as Mood, true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Mood Detection Failed",
+        description: "Could not detect mood from the image.",
+      });
+    } finally {
+      setIsCameraMoodLoading(false);
+      // Turn off the camera
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream;
+        stream.getTracks().forEach(track => track.stop());
+        videoRef.current.srcObject = null;
+        setHasCameraPermission(undefined);
+      }
+    }
+  };
+
+  const handleTextMoodSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+    setIsTextMoodLoading(true);
+    try {
+      const result = await getMoodFromTextInput(textInput);
+      handleMoodClick(result.mood as Mood, true);
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Mood Detection Failed",
+        description: "Could not detect mood from your text.",
+      });
+    } finally {
+      setIsTextMoodLoading(false);
+    }
+  };
+
+  const handleMoodClick = async (mood: Mood, force = false) => {
+    if (selectedMood === mood && !force) {
       setSelectedMood(null);
       setAdvice(null);
       return;
@@ -185,11 +284,7 @@ export default function Home() {
   const handleAddTransaction = (data: TransactionFormData) => {
     const newTransaction: Transaction = {
       id: Date.now().toString(),
-      date: new Date().toLocaleDateString("en-US", {
-        month: "2-digit",
-        day: "2-digit",
-        year: "numeric",
-      }),
+      date: format(data.date, "MM/dd/yyyy"),
       timeOfDay: new Date()
         .toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
         .includes("AM")
@@ -226,7 +321,7 @@ export default function Home() {
               How are you feeling today?
             </CardTitle>
             <CardDescription>
-              Select a mood to get a financial tip.
+              Select a mood to get a financial tip, or let us detect it for you.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -235,9 +330,10 @@ export default function Home() {
                 <div key={mood.value}>
                   <button
                     onClick={() => handleMoodClick(mood.value)}
-                    className={`flex flex-col items-center justify-center gap-2 p-6 rounded-lg w-full bg-background hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/50 ${
+                    className={cn(
+                      'flex flex-col items-center justify-center gap-2 p-6 rounded-lg w-full bg-background hover:bg-primary/10 transition-colors border border-transparent hover:border-primary/50',
                       selectedMood === mood.value ? 'bg-primary/10 border-primary/50' : ''
-                    }`}
+                    )}
                   >
                     {mood.icon}
                     <span className="font-medium">{mood.name}</span>
@@ -245,6 +341,50 @@ export default function Home() {
                 </div>
               ))}
             </div>
+            
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <form onSubmit={handleTextMoodSubmit} className="space-y-2">
+                <Textarea 
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="How was your day..."
+                  disabled={isTextMoodLoading}
+                />
+                <Button type="submit" disabled={isTextMoodLoading || !textInput.trim()} className="w-full">
+                  {isTextMoodLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Get Mood From Text
+                </Button>
+              </form>
+
+              <div className="space-y-2">
+                {hasCameraPermission === undefined && (
+                  <Button onClick={handleGetCameraPermission} disabled={isCameraMoodLoading} className="w-full">
+                    {isCameraMoodLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Camera className="mr-2 h-4 w-4" />}
+                    Enable Camera to Detect Mood
+                  </Button>
+                )}
+
+                {hasCameraPermission === true && (
+                  <>
+                    <video ref={videoRef} className="w-full aspect-video rounded-md bg-muted" autoPlay muted />
+                    <Button onClick={processImageFromCamera} disabled={isCameraMoodLoading} className="w-full">
+                        {isCameraMoodLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Detect Mood From Camera
+                    </Button>
+                  </>
+                )}
+
+                {hasCameraPermission === false && (
+                    <Alert variant="destructive">
+                        <AlertTitle>Camera Access Required</AlertTitle>
+                        <AlertDescription>
+                          Please allow camera access to use this feature. You may need to reset permissions in your browser settings.
+                        </AlertDescription>
+                    </Alert>
+                )}
+              </div>
+            </div>
+
              {selectedMood && (
                 <div className="mt-4 p-4 rounded-lg bg-muted border border-border">
                   {isAdviceLoading ? (
@@ -298,6 +438,38 @@ export default function Home() {
                                             render={({ field }) => <Input id="amount" type="number" {...field} />}
                                         />
                                         {errors.amount && <p className="text-destructive text-sm">{errors.amount.message}</p>}
+                                    </div>
+                                     <div className="space-y-2">
+                                      <Label htmlFor="date">Date</Label>
+                                      <Controller
+                                        name="date"
+                                        control={control}
+                                        render={({ field }) => (
+                                          <Popover>
+                                            <PopoverTrigger asChild>
+                                              <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                  "w-full justify-start text-left font-normal",
+                                                  !field.value && "text-muted-foreground"
+                                                )}
+                                              >
+                                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                              </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0">
+                                              <Calendar
+                                                mode="single"
+                                                selected={field.value}
+                                                onSelect={field.onChange}
+                                                initialFocus
+                                              />
+                                            </PopoverContent>
+                                          </Popover>
+                                        )}
+                                      />
+                                      {errors.date && <p className="text-destructive text-sm">{errors.date.message}</p>}
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="mood">Mood</Label>
