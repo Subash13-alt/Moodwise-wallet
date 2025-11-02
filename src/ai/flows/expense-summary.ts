@@ -28,6 +28,9 @@ export type ExpenseSummaryInput = z.infer<typeof ExpenseSummaryInputSchema>;
 
 const ExpenseSummaryOutputSchema = z.object({
   summary: z.string().describe('A concise summary of the user\'s expenses.'),
+  totalSpent: z.number().describe('The total amount of money spent.'),
+  transactionCount: z.number().describe('The total number of transactions.'),
+  topCategory: z.string().describe('The category with the highest spending.'),
 });
 export type ExpenseSummaryOutput = z.infer<typeof ExpenseSummaryOutputSchema>;
 
@@ -41,7 +44,7 @@ const prompt = ai.definePrompt({
   name: 'expenseSummaryPrompt',
   input: { schema: ExpenseSummaryInputSchema },
   output: { schema: ExpenseSummaryOutputSchema },
-  prompt: `You are a financial analyst. Analyze the following list of transactions and provide a short, insightful summary (2-3 sentences) of the user's spending habits. Mention the total spending, the category with the highest spending, and the mood associated with the most spending. The currency is Rupees (₹).
+  prompt: `You are a financial analyst. Analyze the following list of transactions and provide a short, insightful summary (2-3 sentences) of the user's spending habits. Also provide the total spending, total number of transactions, and the category with the highest spending. The currency is Rupees (₹).
 
 Transactions:
 {{#each transactions}}
@@ -57,9 +60,15 @@ const expenseSummaryFlow = ai.defineFlow(
     outputSchema: ExpenseSummaryOutputSchema,
   },
   async (input) => {
+    if (input.transactions.length === 0) {
+      return {
+        summary: 'No transactions available to analyze.',
+        totalSpent: 0,
+        transactionCount: 0,
+        topCategory: 'N/A',
+      };
+    }
     const { output } = await prompt(input);
     return output!;
   }
 );
-
-    

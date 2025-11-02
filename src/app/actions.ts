@@ -60,7 +60,7 @@ export async function getExpenseAdvice(
 
 export async function getExpenseSummaryAction(input: { transactions: Transaction[]}) {
     const result = await getExpenseSummary(input);
-    if (!result.summary) {
+    if (!result) {
         throw new Error("Failed to generate summary.");
     }
     return result;

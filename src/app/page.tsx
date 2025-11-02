@@ -21,6 +21,9 @@ import {
   Camera,
   Upload,
   FileText,
+  Landmark,
+  ShoppingCart,
+  Tag,
 } from "lucide-react";
 import { getAdviceForMood, getExpenseAdvice, getMoodFromImageInput, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -92,6 +95,13 @@ const transactionSchema = z.object({
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
+type ExpenseSummary = {
+    summary: string;
+    totalSpent: number;
+    transactionCount: number;
+    topCategory: string;
+}
+
 export default function Home() {
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [advice, setAdvice] = useState<string | null>(null);
@@ -118,7 +128,7 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  const [expenseSummary, setExpenseSummary] = useState<string | null>(null);
+  const [expenseSummary, setExpenseSummary] = useState<ExpenseSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState(false);
 
 
@@ -155,17 +165,18 @@ export default function Home() {
   }, []);
 
   const getExpenseSummary = async () => {
-    if (transactions.length === 0) {
-      setExpenseSummary("No transactions available to analyze.");
-      return;
-    }
     setIsSummaryLoading(true);
     try {
       const result = await getExpenseSummaryAction({ transactions });
-      setExpenseSummary(result.summary);
+      setExpenseSummary(result);
     } catch (error) {
-      setExpenseSummary("Could not generate summary. Please try again later.");
+      setExpenseSummary(null);
       console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Summary Failed",
+        description: "Could not generate expense summary.",
+      });
     } finally {
       setIsSummaryLoading(false);
     }
@@ -655,16 +666,55 @@ export default function Home() {
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2 text-2xl font-bold">
                         <FileText className="text-primary" />
-                        Expense Summary
+                        Spending Summary
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         {isSummaryLoading ? (
-                        <div className="flex items-center justify-center">
-                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                        </div>
+                            <div className="flex items-center justify-center">
+                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            </div>
+                        ) : expenseSummary ? (
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-3 gap-4 text-center">
+                                    <div>
+                                        <Card className="bg-muted/50 p-4">
+                                            <CardHeader className="p-0 items-center">
+                                                <Landmark className="h-6 w-6 text-primary mb-2"/>
+                                                <CardDescription>Total Spent</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="p-0">
+                                                <p className="text-2xl font-bold">₹{expenseSummary.totalSpent.toLocaleString()}</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                    <div>
+                                         <Card className="bg-muted/50 p-4">
+                                            <CardHeader className="p-0 items-center">
+                                                <ShoppingCart className="h-6 w-6 text-primary mb-2"/>
+                                                <CardDescription>Transactions</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="p-0">
+                                                <p className="text-2xl font-bold">{expenseSummary.transactionCount}</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                    <div>
+                                         <Card className="bg-muted/50 p-4">
+                                            <CardHeader className="p-0 items-center">
+                                                <Tag className="h-6 w-6 text-primary mb-2"/>
+                                                <CardDescription>Top Category</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="p-0">
+                                                <p className="text-xl font-bold">{expenseSummary.topCategory}</p>
+                                            </CardContent>
+                                        </Card>
+                                    </div>
+                                </div>
+                                <p className="text-sm text-muted-foreground">{expenseSummary.summary}</p>
+                            </div>
                         ) : (
-                        <p className="text-sm">{expenseSummary}</p>
+                            <p className="text-sm">No summary available.</p>
                         )}
                     </CardContent>
                 </Card>
