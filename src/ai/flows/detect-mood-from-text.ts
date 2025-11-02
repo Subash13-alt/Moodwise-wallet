@@ -29,11 +29,12 @@ const prompt = ai.definePrompt({
   name: 'detectMoodFromTextPrompt',
   input: {schema: DetectMoodFromTextInputSchema},
   output: {schema: DetectMoodFromTextOutputSchema},
-  prompt: `You are a sentiment analysis expert. Determine the mood (happy, sad, neutral, stressed, anxious, or tired) of the following text:
+  prompt: `You are a sentiment analysis expert. Your task is to determine the user's mood from the given text.
+The mood must be one of the following options: happy, sad, neutral, stressed, anxious, or tired.
+
+Analyze the following text and return only the determined mood.
 
 Text: {{{text}}}
-
-Return the mood as a JSON object.
 `,
 });
 
