@@ -21,7 +21,7 @@ export type DetectMoodFromImageInput = z.infer<typeof DetectMoodFromImageInputSc
 
 const DetectMoodFromImageOutputSchema = z.object({
   mood: z
-    .enum(['happy', 'sad', 'neutral'])
+    .enum(['happy', 'sad', 'neutral', 'stressed', 'anxious', 'tired'])
     .describe('The detected mood from the image.'),
 });
 export type DetectMoodFromImageOutput = z.infer<typeof DetectMoodFromImageOutputSchema>;
@@ -36,7 +36,7 @@ const prompt = ai.definePrompt({
   output: {schema: DetectMoodFromImageOutputSchema},
   prompt: `You are an AI that can detect the mood of a person from an image.
 
-  Analyze the image provided and determine the mood of the person in the image. The mood can be happy, sad, or neutral. Set the mood output field appropriately.
+  Analyze the image provided and determine the mood of the person in the image. The mood can be happy, sad, neutral, stressed, anxious, or tired. Set the mood output field appropriately.
 
   Here is the image:
   {{media url=photoDataUri}}

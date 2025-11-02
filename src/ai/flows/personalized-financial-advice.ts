@@ -14,7 +14,7 @@ import {z} from 'genkit';
 const PersonalizedFinancialAdviceInputSchema = z.object({
   mood: z
     .string()
-    .describe('The current mood of the user (happy, sad, or neutral).'),
+    .describe('The current mood of the user (happy, sad, neutral, stressed, anxious, or tired).'),
 });
 export type PersonalizedFinancialAdviceInput = z.infer<
   typeof PersonalizedFinancialAdviceInputSchema
@@ -37,7 +37,7 @@ const prompt = ai.definePrompt({
   name: 'personalizedFinancialAdvicePrompt',
   input: {schema: PersonalizedFinancialAdviceInputSchema},
   output: {schema: PersonalizedFinancialAdviceOutputSchema},
-  prompt: `You are a financial advisor. Based on the user's mood, provide personalized financial advice.
+  prompt: `You are a financial advisor. Based on the user's mood, provide a short, actionable, and encouraging financial tip. Keep it to one or two sentences.
 
 Mood: {{{mood}}}
 

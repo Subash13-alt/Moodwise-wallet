@@ -17,7 +17,7 @@ const DetectMoodFromTextInputSchema = z.object({
 export type DetectMoodFromTextInput = z.infer<typeof DetectMoodFromTextInputSchema>;
 
 const DetectMoodFromTextOutputSchema = z.object({
-  mood: z.enum(['happy', 'sad', 'neutral']).describe('The detected mood (happy, sad, or neutral).'),
+  mood: z.enum(['happy', 'sad', 'neutral', 'stressed', 'anxious', 'tired']).describe('The detected mood (happy, sad, neutral, stressed, anxious, or tired).'),
 });
 export type DetectMoodFromTextOutput = z.infer<typeof DetectMoodFromTextOutputSchema>;
 
@@ -29,7 +29,7 @@ const prompt = ai.definePrompt({
   name: 'detectMoodFromTextPrompt',
   input: {schema: DetectMoodFromTextInputSchema},
   output: {schema: DetectMoodFromTextOutputSchema},
-  prompt: `You are a sentiment analysis expert. Determine the mood (happy, sad, or neutral) of the following text:
+  prompt: `You are a sentiment analysis expert. Determine the mood (happy, sad, neutral, stressed, anxious, or tired) of the following text:
 
 Text: {{{text}}}
 
