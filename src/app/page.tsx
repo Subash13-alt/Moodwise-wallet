@@ -23,7 +23,6 @@ import {
   Landmark,
   ShoppingCart,
   Tag,
-  Camera,
 } from "lucide-react";
 import { getAdviceForMood, getExpenseAdvice, getMoodFromTextInput, getExpenseSummaryAction } from "./actions";
 import { Button } from "@/components/ui/button";
@@ -745,3 +744,5 @@ export default function Home() {
     </main>
   );
 }
+
+    
